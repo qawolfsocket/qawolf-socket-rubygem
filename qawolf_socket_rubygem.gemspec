@@ -1,4 +1,3 @@
-cat > qawolf-socket-rubygem.gemspec <<'RUBY'
 # frozen_string_literal: true
 
 Gem::Specification.new do |spec|
@@ -14,3 +13,4 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/qawolfsocket/qawolf-socket-rubygem"
 end
 RUBY
+
