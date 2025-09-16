@@ -18,20 +18,20 @@ jobs:
         with:
           ruby-version: '3.2'
 
-      - name: Sync gemspec version from tag
+      - name: Build gem with version from tag
+        env:
+          TAG_NAME: ${{ github.ref_name }}   # e.g. "v0.0.2"
         run: |
-          VER="${GITHUB_REF_NAME#v}"
-          sed -i -E 's/(spec\.version\s*=\s*")[^"]+(")/\1'"$VER"'\2/' qawolf-socket-rubygem.gemspec
-          ruby -e 'spec=Gem::Specification.load("qawolf-socket-rubygem.gemspec"); abort("bad version") unless spec.version.to_s == ENV["VER"]; puts "Gem version=#{spec.version}"' VER="$VER"
-
-      - name: Build gem
-        run: gem build qawolf-socket-rubygem.gemspec
+          VER="${TAG_NAME#v}"
+          echo "Building version: $VER"
+          GEM_VERSION="$VER" gem build qawolf-socket-rubygem.gemspec
+          ls -l qawolf-socket-rubygem-*.gem
+          # sanity check the built version matches the tag
+          ruby -e 'file=Dir["qawolf-socket-rubygem-*.gem"][0]; s=Gem::Package.new(file).spec; exp=ENV["VER"]; abort("mismatch #{s.version} != #{exp}") unless s.version.to_s==exp; puts "OK #{s.name} #{s.version}"' VER="$VER"
 
       - name: Publish to RubyGems
         run: |
           mkdir -p ~/.gem
           printf -- "---\n:rubygems_api_key: ${RUBYGEMS_API_KEY}\n" > ~/.gem/credentials
           chmod 600 ~/.gem/credentials
-          gem push qawolf-socket-rubygem-*.gem
-
           gem push qawolf-socket-rubygem-*.gem
