@@ -1,6 +1,4 @@
 # .github/workflows/release-rubygem.yml
-name: Release RubyGem
-
 on:
   release:
     types: [published]
@@ -8,24 +6,28 @@ on:
 jobs:
   push:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read   # checkout
+    env:
+      RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
 
-      # Ensure the tag vX.Y.Z matches the VERSION constant in your lib
-      - name: Verify tag matches gem version
-        id: verify
+      - name: Sync version file with tag
         run: |
-          TAG="${GITHUB_REF_NAME}"           # e.g. v0.0.3
-          VERSION=$(ruby -e 'require "./lib/qawolf_socket_rubygem"; puts QawolfSocketRubygem::VERSION')
-          echo "Tag: $TAG  Version: $VERSION"
+          VER="${GITHUB_REF_NAME#v}"          # strip leading v
+          # If you store version in lib/.../version.rb
+          sed -i -E "s/(VERSION\s*=\s*\")[0-9]+\.[0-9]+\.[0-9]+(\")/\\1${VER}\\2/" lib/qawolf_socket_rubygem/version.rb
+          # If you hardcode in gemspec instead, use this line instead:
+          # sed -i -E "s/(spec\.version\s*=\s*\")[0-9]+\.[0-9]+\.[0-9]+(\")/\\1${VER}\\2/" qawolf-socket-rubygem.gemspec
+
+      - name: Verify tag matches gem version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION=$(ruby -e 'require "./lib/qawolf_socket_rubygem/version"; puts QawolfSocketRubygem::VERSION' 2>/dev/null || \
+                    ruby -e 'spec=Gem::Specification.load("qawolf-socket-rubygem.gemspec"); puts spec.version')
           if [ "v$VERSION" != "$TAG" ]; then
             echo "::error::Tag $TAG does not match VERSION $VERSION"
             exit 1
@@ -35,8 +37,6 @@ jobs:
         run: gem build qawolf-socket-rubygem.gemspec
 
       - name: Publish to RubyGems
-        env:
-          RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
         run: |
           mkdir -p ~/.gem
           printf -- "---\n:rubygems_api_key: ${RUBYGEMS_API_KEY}\n" > ~/.gem/credentials
