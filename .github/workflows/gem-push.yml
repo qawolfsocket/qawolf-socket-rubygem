@@ -1,4 +1,5 @@
 # .github/workflows/release-rubygem.yml
+name: Release RubyGem
 on:
   release:
     types: [published]
@@ -6,6 +7,8 @@ on:
 jobs:
   push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
     steps:
@@ -15,23 +18,11 @@ jobs:
         with:
           ruby-version: '3.2'
 
-      - name: Sync version file with tag
+      - name: Sync gemspec version from tag
         run: |
-          VER="${GITHUB_REF_NAME#v}"          # strip leading v
-          # If you store version in lib/.../version.rb
-          sed -i -E "s/(VERSION\s*=\s*\")[0-9]+\.[0-9]+\.[0-9]+(\")/\\1${VER}\\2/" lib/qawolf_socket_rubygem/version.rb
-          # If you hardcode in gemspec instead, use this line instead:
-          # sed -i -E "s/(spec\.version\s*=\s*\")[0-9]+\.[0-9]+\.[0-9]+(\")/\\1${VER}\\2/" qawolf-socket-rubygem.gemspec
-
-      - name: Verify tag matches gem version
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          VERSION=$(ruby -e 'require "./lib/qawolf_socket_rubygem/version"; puts QawolfSocketRubygem::VERSION' 2>/dev/null || \
-                    ruby -e 'spec=Gem::Specification.load("qawolf-socket-rubygem.gemspec"); puts spec.version')
-          if [ "v$VERSION" != "$TAG" ]; then
-            echo "::error::Tag $TAG does not match VERSION $VERSION"
-            exit 1
-          fi
+          VER="${GITHUB_REF_NAME#v}"
+          sed -i -E 's/(spec\.version\s*=\s*")[^"]+(")/\1'"$VER"'\2/' qawolf-socket-rubygem.gemspec
+          ruby -e 'spec=Gem::Specification.load("qawolf-socket-rubygem.gemspec"); abort("bad version") unless spec.version.to_s == ENV["VER"]; puts "Gem version=#{spec.version}"' VER="$VER"
 
       - name: Build gem
         run: gem build qawolf-socket-rubygem.gemspec
@@ -41,4 +32,6 @@ jobs:
           mkdir -p ~/.gem
           printf -- "---\n:rubygems_api_key: ${RUBYGEMS_API_KEY}\n" > ~/.gem/credentials
           chmod 600 ~/.gem/credentials
+          gem push qawolf-socket-rubygem-*.gem
+
           gem push qawolf-socket-rubygem-*.gem
