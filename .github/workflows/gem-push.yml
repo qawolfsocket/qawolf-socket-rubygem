@@ -1,0 +1,44 @@
+# .github/workflows/release-rubygem.yml
+name: Release RubyGem
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read   # checkout
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      # Ensure the tag vX.Y.Z matches the VERSION constant in your lib
+      - name: Verify tag matches gem version
+        id: verify
+        run: |
+          TAG="${GITHUB_REF_NAME}"           # e.g. v0.0.3
+          VERSION=$(ruby -e 'require "./lib/qawolf_socket_rubygem"; puts QawolfSocketRubygem::VERSION')
+          echo "Tag: $TAG  Version: $VERSION"
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "::error::Tag $TAG does not match VERSION $VERSION"
+            exit 1
+          fi
+
+      - name: Build gem
+        run: gem build qawolf-socket-rubygem.gemspec
+
+      - name: Publish to RubyGems
+        env:
+          RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: |
+          mkdir -p ~/.gem
+          printf -- "---\n:rubygems_api_key: ${RUBYGEMS_API_KEY}\n" > ~/.gem/credentials
+          chmod 600 ~/.gem/credentials
+          gem push qawolf-socket-rubygem-*.gem
