@@ -12,5 +12,5 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
   spec.homepage      = "https://github.com/qawolfsocket/qawolf-socket-rubygem"
 end
-RUBY
+
 
