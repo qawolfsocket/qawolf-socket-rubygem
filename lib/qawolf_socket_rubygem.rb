@@ -1,5 +1,3 @@
-mkdir -p lib
-cat > lib/qawolf_socket_rubygem.rb <<'RUBY'
 # frozen_string_literal: true
 
 module QawolfSocketRubygem
