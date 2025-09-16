@@ -7,4 +7,3 @@ module QawolfSocketRubygem
     "hello from rubygems.org/qawolf-socket-rubygem"
   end
 end
-RUBY
